@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>StudyTrack — Painel de Estudos</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<style>
+  :root {
+    --bg:       #090e0d;
+    --surface:  #111a18;
+    --card:     #152220;
+    --border:   #1f332f;
+    --teal:     #00c9a7;
+    --teal-dim: #00c9a720;
+    --orange:   #f97316;
+    --orange-dim:#f9731620;
+    --red:      #ef4444;
+    --text:     #d4ede8;
+    --muted:    #5a7a74;
+    --white:    #f0faf8;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Syne', sans-serif;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ── HEADER ── */
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 16px 32px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    gap: 12px;
+  }
+  .logo { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  .logo-icon {
+    width: 34px; height: 34px;
+    background: var(--teal);
+    border-radius: 9px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 16px;
+  }
+  .logo h1 { font-size: 1.15rem; font-weight: 800; color: var(--white); letter-spacing: -0.5px; }
+  .logo span { color: var(--teal); }
+
+  /* Month selector */
+  .month-picker-wrap {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 9px;
+    padding: 0 14px;
+    height: 36px;
+    transition: border-color 0.2s;
+  }
+  .month-picker-wrap:focus-within { border-color: var(--teal); }
+  .month-picker-wrap label { font-size: 0.7rem; font-weight: 700; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; white-space: nowrap; }
+  #month-select {
+    background: transparent;
+    border: none;
+    color: var(--white);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    outline: none;
+    -webkit-appearance: none;
+    appearance: none;
+    padding-right: 4px;
+  }
+  #month-select option { background: #152220; color: var(--text); }
+
+  .custom-month-dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--orange);
+    display: none;
+    flex-shrink: 0;
+  }
+  .custom-month-dot.show { display: block; }
+
+  /* Week navigator */
+  .week-nav {
+    display: flex; align-items: center; gap: 0;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 9px; overflow: hidden; height: 36px;
+    transition: border-color 0.2s;
+  }
+  .week-nav:hover { border-color: var(--teal); }
+  .week-arrow {
+    background: none; border: none; border-radius: 0;
+    color: var(--muted); cursor: pointer; font-size: 1.3rem;
+    padding: 0 10px; height: 100%; line-height: 1;
+    transition: color 0.15s, background 0.15s;
+    display: flex; align-items: center;
+  }
+  .week-arrow:hover:not(:disabled) { color: var(--teal); background: var(--teal-dim); }
+  .week-arrow:disabled { opacity: 0.25; cursor: default; }
+  .week-nav-inner { padding: 0 10px; border-left: 1px solid var(--border); border-right: 1px solid var(--border); }
+  .week-nav-label { font-size: 0.58rem; font-weight: 700; letter-spacing: 1.5px; color: var(--muted); text-transform: uppercase; line-height: 1; }
+  .week-nav-range { font-family: 'JetBrains Mono', monospace; font-size: 0.78rem; font-weight: 700; color: var(--white); line-height: 1; margin-top: 2px; white-space: nowrap; }
+
+  .header-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+  #date-display { font-family: 'JetBrains Mono', monospace; font-size: 0.75rem; color: var(--muted); }
+
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 8px 15px; border-radius: 8px;
+    font-family: 'Syne', sans-serif; font-weight: 700; font-size: 0.8rem;
+    cursor: pointer; border: none; transition: all 0.2s; white-space: nowrap;
+  }
+  .btn-primary { background: var(--teal); color: #090e0d; }
+  .btn-primary:hover { background: #00e8c0; transform: translateY(-1px); }
+  .btn-ghost { background: transparent; color: var(--teal); border: 1px solid var(--border); }
+  .btn-ghost:hover { background: var(--teal-dim); }
+
+  /* ── MAIN ── */
+  main { max-width: 1400px; margin: 0 auto; padding: 24px 32px; display: flex; flex-direction: column; gap: 20px; }
+
+
+
+  /* ── STAT CARDS ── */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; }
+  .stat-card {
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 14px; padding: 18px 20px; position: relative; overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .stat-card:hover { border-color: var(--teal); transform: translateY(-2px); }
+  .stat-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px;
+    background: linear-gradient(90deg, var(--teal), transparent);
+  }
+  .stat-card.orange::before { background: linear-gradient(90deg, var(--orange), transparent); }
+  .stat-card.purple::before { background: linear-gradient(90deg, #a78bfa, transparent); }
+
+  .stat-label {
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 8px; display: flex; align-items: center; gap: 6px;
+  }
+  .stat-label .dot { width: 5px; height: 5px; border-radius: 50%; background: var(--teal); }
+  .stat-label .dot.orange { background: var(--orange); }
+  .stat-label .dot.purple { background: #a78bfa; }
+
+  .stat-value { font-family: 'JetBrains Mono', monospace; font-size: 2rem; font-weight: 700; color: var(--white); line-height: 1; margin-bottom: 5px; }
+  .stat-sub { font-size: 0.72rem; color: var(--muted); }
+  .stat-sub .goal-pct { color: var(--teal); font-weight: 700; }
+  .stat-sub .goal-pct.warn { color: var(--orange); }
+  .stat-sub .goal-pct.danger { color: var(--red); }
+  .streak-val { display: flex; align-items: baseline; gap: 6px; }
+  .flame { font-size: 1.6rem; }
+
+  /* ── MID SECTION ── */
+  .mid-section { display: grid; grid-template-columns: 360px 1fr; gap: 16px; }
+
+  .rings-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; }
+  .card-title { font-size: 0.68rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase; color: var(--muted); margin-bottom: 16px; }
+
+  .rings-list { display: flex; flex-direction: column; gap: 12px; }
+  .ring-item { display: flex; align-items: center; gap: 12px; }
+  .ring-svg-wrap { position: relative; width: 58px; height: 58px; flex-shrink: 0; }
+  .ring-svg-wrap svg { transform: rotate(-90deg); }
+  .ring-center { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: 'JetBrains Mono', monospace; font-size: 0.65rem; font-weight: 700; color: var(--white); }
+  .ring-info { flex: 1; }
+  .ring-name { font-size: 0.8rem; font-weight: 700; color: var(--text); margin-bottom: 3px; }
+  .ring-detail { font-family: 'JetBrains Mono', monospace; font-size: 0.68rem; color: var(--muted); }
+  .ring-pct { font-family: 'JetBrains Mono', monospace; font-size: 1.05rem; font-weight: 700; color: var(--teal); text-align: right; min-width: 44px; }
+  .ring-pct.warn { color: var(--orange); }
+  .ring-pct.danger { color: var(--red); }
+
+  .extra-stats { margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--border); display: flex; gap: 0; }
+  .extra-stat { flex: 1; text-align: center; }
+  .extra-stat-val { font-family: 'JetBrains Mono', monospace; font-size: 1.2rem; font-weight: 700; color: var(--white); }
+  .extra-stat-val.teal { color: var(--teal); }
+  .extra-stat-val.orange { color: var(--orange); }
+  .extra-stat-lbl { font-size: 0.66rem; color: var(--muted); margin-top: 2px; }
+
+  .chart-card { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 20px 22px; }
+  .chart-wrap { position: relative; height: 220px; width: 100%; margin-top: 8px; }
+
+  /* ── BOTTOM ── */
+  .bottom-section { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+
+  .project-bar { display: flex; flex-direction: column; gap: 10px; margin-top: 4px; }
+  .proj-header { display: flex; justify-content: space-between; margin-bottom: 4px; font-size: 0.78rem; }
+  .proj-name { color: var(--text); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 200px; }
+  .proj-hours { font-family: 'JetBrains Mono', monospace; color: var(--teal); font-weight: 700; }
+  .proj-track { height: 4px; background: var(--border); border-radius: 99px; overflow: hidden; }
+  .proj-fill { height: 100%; border-radius: 99px; transition: width 1s cubic-bezier(.4,0,.2,1); }
+  .proj-fill.c0 { background: var(--teal); }
+  .proj-fill.c1 { background: var(--orange); }
+  .proj-fill.c2 { background: #a78bfa; }
+  .proj-fill.c3 { background: #34d399; }
+  .proj-fill.c4 { background: #fb7185; }
+  .proj-fill.c5 { background: #38bdf8; }
+  .proj-fill.c6 { background: #fbbf24; }
+  .proj-fill.c7 { background: #f472b6; }
+  .proj-fill.excluded { background: var(--border); opacity: 0.5; }
+  .proj-tag { font-size: 0.6rem; padding: 1px 6px; border-radius: 4px; font-weight: 700; letter-spacing: 0.5px; margin-left: 6px; }
+  .proj-tag.included-tag { background: var(--teal-dim); color: var(--teal); }
+  .proj-tag.excluded-tag { background: #ffffff10; color: var(--muted); }
+
+  /* ── MODAL BASE ── */
+  .modal-backdrop {
+    position: fixed; inset: 0; background: #00000090; backdrop-filter: blur(4px);
+    z-index: 200; display: flex; align-items: center; justify-content: center;
+    opacity: 0; pointer-events: none; transition: opacity 0.2s;
+  }
+  .modal-backdrop.open { opacity: 1; pointer-events: all; }
+  .modal {
+    background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+    padding: 26px; width: 520px; max-width: 96vw; max-height: 90vh; overflow-y: auto;
+    transform: translateY(20px); transition: transform 0.2s;
+  }
+  .modal-backdrop.open .modal { transform: translateY(0); }
+
+  .modal-header { margin-bottom: 18px; }
+  .modal-header h2 { font-size: 1.05rem; color: var(--white); margin-bottom: 4px; }
+  .modal-header p { font-size: 0.78rem; color: var(--muted); }
+
+  /* Tabs inside modal */
+  .modal-tabs { display: flex; gap: 4px; margin-bottom: 20px; background: var(--card); border-radius: 9px; padding: 4px; }
+  .modal-tab {
+    flex: 1; text-align: center; padding: 8px 12px; border-radius: 6px;
+    font-size: 0.78rem; font-weight: 700; cursor: pointer; border: none;
+    background: transparent; color: var(--muted); transition: all 0.2s;
+  }
+  .modal-tab.active { background: var(--surface); color: var(--teal); }
+
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* Section heading inside modal */
+  .modal-section-title {
+    font-size: 0.68rem; font-weight: 700; letter-spacing: 1.5px; text-transform: uppercase;
+    color: var(--muted); margin-bottom: 14px; display: flex; align-items: center; gap: 8px;
+  }
+  .modal-section-title span {
+    font-family: 'JetBrains Mono', monospace; color: var(--orange);
+    font-size: 0.7rem; letter-spacing: 0; text-transform: none; font-weight: 700;
+  }
+
+  .form-group { margin-bottom: 14px; }
+  .form-group label { display: block; font-size: 0.72rem; font-weight: 700; color: var(--muted); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 5px; }
+  .form-group input {
+    width: 100%; background: var(--card); border: 1px solid var(--border);
+    border-radius: 8px; padding: 9px 13px;
+    font-family: 'JetBrains Mono', monospace; font-size: 0.95rem; color: var(--white);
+    outline: none; transition: border-color 0.2s;
+  }
+  .form-group input:focus { border-color: var(--teal); }
+
+  /* Custom goals indicator */
+  .goals-month-badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--orange-dim); border: 1px solid #f9731640;
+    border-radius: 6px; padding: 4px 10px; font-size: 0.72rem; color: var(--orange);
+    font-weight: 700; margin-bottom: 14px;
+  }
+  .goals-inherited { background: var(--teal-dim); border-color: #00c9a740; color: var(--teal); }
+
+  /* Project checkboxes */
+  .projects-loading { color: var(--muted); font-size: 0.82rem; text-align: center; padding: 20px 0; }
+  .proj-check-list { display: flex; flex-direction: column; gap: 8px; }
+  .proj-check-item {
+    display: flex; align-items: center; gap: 12px;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: 9px; padding: 11px 14px; cursor: pointer;
+    transition: border-color 0.15s;
+  }
+  .proj-check-item:hover { border-color: var(--teal); }
+  .proj-check-item.checked { border-color: var(--teal); background: var(--teal-dim); }
+
+  .proj-checkbox { display: none; }
+  .proj-check-box {
+    width: 18px; height: 18px; border-radius: 5px; border: 2px solid var(--border);
+    flex-shrink: 0; display: flex; align-items: center; justify-content: center;
+    transition: all 0.15s; font-size: 11px;
+  }
+  .proj-check-item.checked .proj-check-box { background: var(--teal); border-color: var(--teal); }
+  .proj-check-name { font-size: 0.85rem; font-weight: 600; color: var(--text); flex: 1; }
+  .proj-check-hours { font-family: 'JetBrains Mono', monospace; font-size: 0.72rem; color: var(--muted); }
+
+  .filter-note { font-size: 0.72rem; color: var(--muted); margin-top: 10px; line-height: 1.5; }
+  .filter-note strong { color: var(--text); }
+
+  .modal-footer { display: flex; justify-content: flex-end; gap: 10px; margin-top: 20px; }
+
+  /* ── IMPORT MODAL ── */
+  .drop-zone {
+    border: 2px dashed var(--border); border-radius: 12px; padding: 32px 20px;
+    text-align: center; cursor: pointer; transition: all 0.2s; margin-bottom: 14px;
+  }
+  .drop-zone:hover, .drop-zone.drag-over { border-color: var(--teal); background: var(--teal-dim); }
+  .drop-zone p { color: var(--muted); font-size: 0.82rem; margin: 0; }
+  .drop-zone .icon { font-size: 1.8rem; margin-bottom: 8px; }
+  #file-input { display: none; }
+  .import-result {
+    background: var(--card); border: 1px solid var(--border); border-radius: 9px;
+    padding: 11px 14px; font-family: 'JetBrains Mono', monospace; font-size: 0.8rem;
+    color: var(--teal); margin-bottom: 14px; display: none;
+  }
+
+  /* ── TOAST ── */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: var(--surface); border: 1px solid var(--teal);
+    border-radius: 9px; padding: 10px 16px; font-size: 0.82rem; color: var(--teal);
+    z-index: 300; transform: translateY(80px); opacity: 0; transition: all 0.3s;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+
+  /* ── RESPONSIVE ── */
+  @media (max-width: 1100px) {
+    .stats-grid { grid-template-columns: repeat(2, 1fr); }
+    .mid-section { grid-template-columns: 1fr; }
+    .bottom-section { grid-template-columns: 1fr; }
+  }
+  @media (max-width: 680px) {
+    header { padding: 12px 14px; flex-wrap: wrap; }
+    #date-display { display: none; }
+    main { padding: 14px; gap: 14px; }
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .stat-value { font-size: 1.6rem; }
+  }
+
+  @keyframes fadeUp { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:translateY(0); } }
+  .stat-card { animation: fadeUp .4s ease both; }
+  .stat-card:nth-child(1){animation-delay:.04s} .stat-card:nth-child(2){animation-delay:.08s}
+  .stat-card:nth-child(3){animation-delay:.12s} .stat-card:nth-child(4){animation-delay:.16s}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">📚</div>
+    <h1>Study<span>Track</span></h1>
+  </div>
+
+  <!-- Month picker -->
+  <div class="month-picker-wrap">
+    <label>MÊS</label>
+    <select id="month-select"></select>
+    <div class="custom-month-dot" id="custom-dot" title="Metas personalizadas para este mês"></div>
+  </div>
+
+  <!-- Week navigator -->
+  <div class="week-nav">
+    <button class="week-arrow" id="week-prev" onclick="shiftWeek(-1)" title="Semana anterior">&#8249;</button>
+    <div class="week-nav-inner">
+      <div class="week-nav-label">SEMANA</div>
+      <div class="week-nav-range" id="week-label">—</div>
+    </div>
+    <button class="week-arrow" id="week-next" onclick="shiftWeek(1)" title="Próxima semana" disabled>&#8250;</button>
+  </div>
+
+  <div class="header-right">
+    <span id="date-display"></span>
+    <button class="btn btn-ghost" onclick="openSettings()">⚙ Configurações</button>
+    <button class="btn btn-primary" onclick="openImport()">⬆ Importar CSV</button>
+  </div>
+</header>
+
+<main>
+
+  <!-- STAT CARDS -->
+  <div class="stats-grid">
+    <div class="stat-card" id="card-today">
+      <div class="stat-label"><span class="dot"></span><span id="lbl-today">Hoje</span></div>
+      <div class="stat-value" id="today-val">—</div>
+      <div class="stat-sub">Meta: <span id="today-goal">3h</span> · <span class="goal-pct" id="today-pct">0%</span></div>
+    </div>
+    <div class="stat-card" id="card-week">
+      <div class="stat-label"><span class="dot"></span><span id="lbl-week">Esta Semana</span></div>
+      <div class="stat-value" id="week-val">—</div>
+      <div class="stat-sub">Meta: <span id="week-goal">20h</span> · <span class="goal-pct" id="week-pct">0%</span></div>
+    </div>
+    <div class="stat-card purple">
+      <div class="stat-label"><span class="dot purple"></span>Este Mês</div>
+      <div class="stat-value" id="month-val">—</div>
+      <div class="stat-sub">Meta: <span id="month-goal">80h</span> · <span class="goal-pct" id="month-pct">0%</span></div>
+    </div>
+    <div class="stat-card orange">
+      <div class="stat-label"><span class="dot orange"></span>Sequência Atual</div>
+      <div class="streak-val">
+        <div class="stat-value" id="streak-val">—</div>
+        <div class="flame">🔥</div>
+      </div>
+      <div class="stat-sub" id="streak-sub">dias consecutivos</div>
+    </div>
+  </div>
+
+  <!-- MID: RINGS + CHART -->
+  <div class="mid-section">
+    <div class="rings-card">
+      <div class="card-title">Progresso das Metas</div>
+      <div class="rings-list">
+        <div class="ring-item">
+          <div class="ring-svg-wrap">
+            <svg width="58" height="58" viewBox="0 0 58 58">
+              <circle cx="29" cy="29" r="23" fill="none" stroke="#1f332f" stroke-width="5"/>
+              <circle cx="29" cy="29" r="23" fill="none" stroke="var(--teal)" stroke-width="5" stroke-linecap="round" stroke-dasharray="144.5" stroke-dashoffset="144.5" id="ring-today" style="transition:stroke-dashoffset 1s ease"/>
+            </svg>
+            <div class="ring-center" id="ring-today-label">0%</div>
+          </div>
+          <div class="ring-info">
+            <div class="ring-name" id="ring-today-name">Hoje</div>
+            <div class="ring-detail" id="ring-today-detail">0h de 3h</div>
+          </div>
+          <div class="ring-pct" id="ring-today-pct">0%</div>
+        </div>
+        <div class="ring-item">
+          <div class="ring-svg-wrap">
+            <svg width="58" height="58" viewBox="0 0 58 58">
+              <circle cx="29" cy="29" r="23" fill="none" stroke="#1f332f" stroke-width="5"/>
+              <circle cx="29" cy="29" r="23" fill="none" stroke="var(--orange)" stroke-width="5" stroke-linecap="round" stroke-dasharray="144.5" stroke-dashoffset="144.5" id="ring-week" style="transition:stroke-dashoffset 1s ease"/>
+            </svg>
+            <div class="ring-center" id="ring-week-label">0%</div>
+          </div>
+          <div class="ring-info">
+            <div class="ring-name" id="ring-week-name">Semana</div>
+            <div class="ring-detail" id="ring-week-detail">0h de 20h</div>
+          </div>
+          <div class="ring-pct warn" id="ring-week-pct">0%</div>
+        </div>
+        <div class="ring-item">
+          <div class="ring-svg-wrap">
+            <svg width="58" height="58" viewBox="0 0 58 58">
+              <circle cx="29" cy="29" r="23" fill="none" stroke="#1f332f" stroke-width="5"/>
+              <circle cx="29" cy="29" r="23" fill="none" stroke="#a78bfa" stroke-width="5" stroke-linecap="round" stroke-dasharray="144.5" stroke-dashoffset="144.5" id="ring-month" style="transition:stroke-dashoffset 1s ease"/>
+            </svg>
+            <div class="ring-center" id="ring-month-label">0%</div>
+          </div>
+          <div class="ring-info">
+            <div class="ring-name">Mês</div>
+            <div class="ring-detail" id="ring-month-detail">0h de 80h</div>
+          </div>
+          <div class="ring-pct" style="color:#a78bfa" id="ring-month-pct">0%</div>
+        </div>
+      </div>
+      <div class="extra-stats">
+        <div class="extra-stat">
+          <div class="extra-stat-val" id="days-studied">—</div>
+          <div class="extra-stat-lbl">dias no mês</div>
+        </div>
+        <div class="extra-stat">
+          <div class="extra-stat-val orange" id="best-day-val">—</div>
+          <div class="extra-stat-lbl">melhor dia</div>
+        </div>
+        <div class="extra-stat">
+          <div class="extra-stat-val teal" id="total-val">—</div>
+          <div class="extra-stat-lbl">total geral</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="chart-card">
+      <div class="card-title" id="daily-chart-title">Horas por Dia — Este Mês</div>
+      <div class="chart-wrap"><canvas id="daily-chart"></canvas></div>
+    </div>
+  </div>
+
+  <!-- BOTTOM -->
+  <div class="bottom-section">
+    <div class="chart-card">
+      <div class="card-title">Tendência Semanal — Últimas 8 Semanas</div>
+      <div class="chart-wrap"><canvas id="weekly-chart"></canvas></div>
+    </div>
+    <div class="chart-card">
+      <div class="card-title">Projetos — <span id="projects-month-label" style="color:var(--teal)">Este Mês</span></div>
+      <div class="project-bar" id="projects-list">
+        <div style="color:var(--muted);font-size:0.82rem;text-align:center;margin-top:20px;">Importe um CSV para ver os projetos</div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<!-- SETTINGS MODAL -->
+<div class="modal-backdrop" id="settings-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>⚙ Configurações</h2>
+      <p>Personalize metas por mês e selecione os projetos que compõem seus indicadores.</p>
+    </div>
+    <div class="modal-tabs">
+      <button class="modal-tab active" onclick="switchTab('tab-goals')">🎯 Metas</button>
+      <button class="modal-tab" onclick="switchTab('tab-projects')">📂 Projetos</button>
+    </div>
+
+    <!-- METAS TAB -->
+    <div class="tab-panel active" id="tab-goals">
+      <div class="modal-section-title">
+        Metas para <span id="goals-month-name">—</span>
+      </div>
+      <div id="goals-badge" class="goals-month-badge goals-inherited">📋 Usando metas padrão (sem personalização para este mês)</div>
+      <div class="form-group">
+        <label>Meta Diária (horas)</label>
+        <input type="number" id="goal-daily" step="0.5" min="0.5" max="24" value="3">
+      </div>
+      <div class="form-group">
+        <label>Meta Semanal (horas)</label>
+        <input type="number" id="goal-weekly" step="1" min="1" max="168" value="20">
+      </div>
+      <div class="form-group">
+        <label>Meta Mensal (horas)</label>
+        <input type="number" id="goal-monthly" step="5" min="5" max="744" value="80">
+      </div>
+    </div>
+
+    <!-- PROJETOS TAB -->
+    <div class="tab-panel" id="tab-projects">
+      <div class="modal-section-title">Projetos que contam para as metas</div>
+      <div id="projects-checks" class="proj-check-list">
+        <div class="projects-loading">⏳ Carregando projetos...</div>
+      </div>
+      <p class="filter-note" style="margin-top:12px;">
+        Apenas os projetos <strong>marcados</strong> são contabilizados no cálculo de horas para as metas diária, semanal e mensal. O filtro é global (vale para todos os meses). Se nenhum projeto estiver marcado, todos são contados.
+      </p>
+    </div>
+
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeSettings()">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveSettings()">Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- IMPORT MODAL -->
+<div class="modal-backdrop" id="import-modal">
+  <div class="modal">
+    <div class="modal-header">
+      <h2>⬆ Importar CSV do Clockify</h2>
+      <p>Exporte o relatório detalhado no Clockify e importe aqui. Duplicatas são ignoradas automaticamente.</p>
+    </div>
+    <div class="drop-zone" id="drop-zone" onclick="document.getElementById('file-input').click()">
+      <div class="icon">📂</div>
+      <p>Clique para selecionar ou arraste o arquivo CSV aqui</p>
+    </div>
+    <input type="file" id="file-input" accept=".csv">
+    <div class="import-result" id="import-result"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeImport()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── STATE ──
+let selectedMonth = '';
+let selectedWeekStart = null;   // Date object, always a Monday
+let dailyChart = null;
+let weeklyChart = null;
+let activeTab = 'tab-goals';
+let allProjectNames = [];
+
+// ── INIT ──
+const todayDate = new Date();
+document.getElementById('date-display').textContent = todayDate.toLocaleDateString('pt-BR', {weekday:'long', day:'numeric', month:'long', year:'numeric'});
+
+function getMonday(d) {
+  const day = d.getDay();
+  const diff = d.getDate() - day + (day === 0 ? -6 : 1);
+  const m = new Date(d); m.setDate(diff); m.setHours(0,0,0,0);
+  return m;
+}
+
+function isoDate(d) { return d.toISOString().split('T')[0]; }
+
+function fmtDay(d) { return d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit'}); }
+
+async function init() {
+  selectedWeekStart = getMonday(new Date());
+  updateWeekNav();
+  await buildMonthSelector();
+  loadData();
+}
+
+// ── WEEK NAVIGATOR ──
+function shiftWeek(delta) {
+  selectedWeekStart = new Date(selectedWeekStart.getTime() + delta * 7 * 86400000);
+  updateWeekNav();
+  loadData();
+}
+
+function updateWeekNav() {
+  const sunday = new Date(selectedWeekStart.getTime() + 6 * 86400000);
+  document.getElementById('week-label').textContent = `${fmtDay(selectedWeekStart)} – ${fmtDay(sunday)}`;
+  const thisMonday = getMonday(new Date());
+  document.getElementById('week-next').disabled = selectedWeekStart >= thisMonday;
+}
+
+// ── MONTH SELECTOR ──
+async function buildMonthSelector() {
+  const sel = document.getElementById('month-select');
+  const today = new Date();
+  const opts = [];
+  for (let i = 0; i < 24; i++) {
+    const d = new Date(today.getFullYear(), today.getMonth() - i, 1);
+    const ym = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+    const label = d.toLocaleDateString('pt-BR', {month:'long', year:'numeric'});
+    opts.push({ym, label});
+  }
+  sel.innerHTML = opts.map(o => `<option value="${o.ym}">${capitalize(o.label)}</option>`).join('');
+  selectedMonth = opts[0].ym;
+  sel.value = selectedMonth;
+  sel.addEventListener('change', () => { selectedMonth = sel.value; loadData(); });
+}
+
+function capitalize(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+
+function monthLabel(ym) {
+  const [y, m] = ym.split('-').map(Number);
+  return capitalize(new Date(y, m-1, 1).toLocaleDateString('pt-BR', {month:'long', year:'numeric'}));
+}
+
+// ── LOAD DATA ──
+async function loadData() {
+  try {
+    const ws = isoDate(selectedWeekStart);
+    const [stats, goalsRaw] = await Promise.all([
+      fetch(`/api/stats?month=${selectedMonth}&week_start=${ws}`).then(r => r.json()),
+      fetch(`/api/goals?month=${selectedMonth}`).then(r => r.json()),
+    ]);
+    const hasCustom = goalsRaw.year_month === selectedMonth;
+    document.getElementById('custom-dot').classList.toggle('show', hasCustom);
+    renderStats(stats);
+  } catch(e) {
+    showToast('Erro ao conectar. Certifique-se que app.py está rodando.', true);
+  }
+}
+
+// ── FORMAT ──
+function fmtH(h) {
+  if (h === null || h === undefined) return '—';
+  const hours = Math.floor(h);
+  const mins = Math.round((h - hours) * 60);
+  if (mins === 0) return `${hours}h`;
+  return `${hours}h ${mins}m`;
+}
+function pctClass(p) {
+  if (p >= 100) return '';
+  if (p >= 60) return 'warn';
+  return 'danger';
+}
+
+// ── RENDER ──
+function renderStats(s) {
+  const g = s.goals;
+  const isCurrent = s.is_current;
+
+  // Week card label: current week vs past week
+  const isCurrentWeek = s.is_current_week;
+  const weekLabelText = isCurrentWeek ? 'Esta Semana' : `Semana ${fmtDay(new Date(s.sel_week_start + 'T12:00:00'))}`;
+  document.getElementById('lbl-week').textContent = weekLabelText;
+  document.getElementById('ring-week-name').textContent = isCurrentWeek ? 'Semana' : weekLabelText;
+
+  // Today card
+  document.getElementById('lbl-today').textContent = isCurrent ? 'Hoje' : 'Melhor Dia';
+  document.getElementById('ring-today-name').textContent = isCurrent ? 'Hoje' : 'Melhor Dia';
+
+  // Stat cards
+  const todayH = isCurrent ? s.today : (s.best_day ? s.best_day.hours : 0);
+  const todayPct = Math.min(Math.round(todayH / g.daily * 100), 999);
+  const weekPct  = Math.min(Math.round(s.week / g.weekly * 100), 999);
+  const monthPct = Math.min(Math.round(s.month / g.monthly * 100), 999);
+
+  document.getElementById('today-val').textContent = fmtH(todayH);
+  document.getElementById('week-val').textContent = fmtH(s.week);
+  document.getElementById('month-val').textContent = fmtH(s.month);
+  document.getElementById('streak-val').textContent = s.streak;
+  document.getElementById('streak-sub').textContent = s.streak === 1 ? 'dia consecutivo' : 'dias consecutivos';
+  document.getElementById('total-val').textContent = fmtH(s.total);
+
+  document.getElementById('today-goal').textContent = fmtH(g.daily);
+  document.getElementById('week-goal').textContent = fmtH(g.weekly);
+  document.getElementById('month-goal').textContent = fmtH(g.monthly);
+
+  const setPct = (id, pct) => {
+    const el = document.getElementById(id);
+    el.textContent = pct + '%';
+    el.className = 'goal-pct ' + pctClass(pct);
+  };
+  setPct('today-pct', todayPct);
+  setPct('week-pct', weekPct);
+  setPct('month-pct', monthPct);
+
+  // Rings
+  const CIRC = 144.5;
+  function animRing(id, pct, labelId, pctId) {
+    const c = Math.min(pct, 100);
+    document.getElementById(id).style.strokeDashoffset = CIRC - (CIRC * c / 100);
+    document.getElementById(labelId).textContent = c + '%';
+    document.getElementById(pctId).textContent = pct + '%';
+    document.getElementById(pctId).className = 'ring-pct ' + pctClass(pct);
+  }
+  setTimeout(() => {
+    animRing('ring-today', todayPct, 'ring-today-label', 'ring-today-pct');
+    animRing('ring-week',  weekPct,  'ring-week-label',  'ring-week-pct');
+    animRing('ring-month', monthPct, 'ring-month-label', 'ring-month-pct');
+  }, 80);
+
+  document.getElementById('ring-today-detail').textContent = `${fmtH(todayH)} de ${fmtH(g.daily)}`;
+  document.getElementById('ring-week-detail').textContent  = `${fmtH(s.week)} de ${fmtH(g.weekly)}`;
+  document.getElementById('ring-month-detail').textContent = `${fmtH(s.month)} de ${fmtH(g.monthly)}`;
+
+  document.getElementById('days-studied').textContent = s.days_studied_month;
+  document.getElementById('best-day-val').textContent = s.best_day ? fmtH(s.best_day.hours) : '—';
+
+  // Chart title
+  const ml = monthLabel(s.viewing_month);
+  document.getElementById('daily-chart-title').textContent = `Horas por Dia — ${ml}`;
+  document.getElementById('projects-month-label').textContent = ml;
+
+  // Daily chart
+  const dLabels = s.daily_data.map(d => { const [,, day] = d.date.split('-'); return day; });
+  const dValues = s.daily_data.map(d => d.hours);
+
+  if (dailyChart) dailyChart.destroy();
+  dailyChart = new Chart(document.getElementById('daily-chart'), {
+    type: 'bar',
+    data: {
+      labels: dLabels,
+      datasets: [
+        {
+          label: 'Horas estudadas',
+          data: dValues,
+          backgroundColor: dValues.map(v => v >= g.daily ? '#00c9a7' : '#00c9a745'),
+          borderRadius: 4, borderSkipped: false,
+        },
+        {
+          label: 'Meta diária', data: new Array(dLabels.length).fill(g.daily),
+          type: 'line', borderColor: '#f9731670', borderWidth: 1.5,
+          borderDash: [4,4], pointRadius: 0, fill: false,
+        }
+      ]
+    },
+    options: chartOpts()
+  });
+
+  // Weekly chart
+  if (weeklyChart) weeklyChart.destroy();
+  weeklyChart = new Chart(document.getElementById('weekly-chart'), {
+    type: 'line',
+    data: {
+      labels: s.weekly_trend.map(w => w.week),
+      datasets: [
+        {
+          label: 'Horas/semana', data: s.weekly_trend.map(w => w.hours),
+          borderColor: '#00c9a7', backgroundColor: '#00c9a712',
+          borderWidth: 2.5, pointRadius: 5,
+          pointBackgroundColor: '#00c9a7', pointBorderColor: '#090e0d', pointBorderWidth: 2,
+          fill: true, tension: 0.4,
+        },
+        {
+          label: 'Meta semanal', data: new Array(8).fill(g.weekly),
+          borderColor: '#f9731660', borderWidth: 1.5, borderDash: [4,4], pointRadius: 0, fill: false,
+        }
+      ]
+    },
+    options: chartOpts()
+  });
+
+  // Projects
+  const maxH = s.projects.length > 0 ? s.projects[0].hours : 1;
+  const pl = document.getElementById('projects-list');
+  if (!s.projects.length) {
+    pl.innerHTML = '<div style="color:var(--muted);font-size:0.82rem;text-align:center;margin-top:20px;">Sem dados para este mês</div>';
+  } else {
+    pl.innerHTML = s.projects.map((p, i) => {
+      const isIncluded = allProjectNames.length === 0 || includedProjects.has(p.name);
+      return `
+      <div class="proj-item">
+        <div class="proj-header">
+          <span class="proj-name">
+            ${p.name}
+            <span class="proj-tag ${isIncluded ? 'included-tag' : 'excluded-tag'}">${isIncluded ? '✓ conta' : 'excluído'}</span>
+          </span>
+          <span class="proj-hours">${fmtH(p.hours)}</span>
+        </div>
+        <div class="proj-track">
+          <div class="proj-fill ${isIncluded ? 'c'+i%8 : 'excluded'}" style="width:${Math.round(p.hours/maxH*100)}%"></div>
+        </div>
+      </div>`;
+    }).join('');
+  }
+}
+
+// Track which projects are included for tag display
+let includedProjects = new Set();
+
+function chartOpts() {
+  return {
+    responsive: true, maintainAspectRatio: false,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { labels: { color: '#5a7a74', font: { family: 'Syne', size: 11 }, boxWidth: 12, boxHeight: 12 } },
+      tooltip: {
+        backgroundColor: '#152220', borderColor: '#1f332f', borderWidth: 1,
+        titleColor: '#d4ede8', bodyColor: '#5a7a74',
+        titleFont: { family: 'JetBrains Mono', size: 11 },
+        bodyFont:  { family: 'JetBrains Mono', size: 10 },
+        callbacks: { label: ctx => ` ${ctx.dataset.label}: ${fmtH(ctx.parsed.y)}` }
+      }
+    },
+    scales: {
+      x: { ticks: { color: '#5a7a74', font: { family: 'JetBrains Mono', size: 10 }, maxRotation: 0 }, grid: { color: '#1a2c29' } },
+      y: { ticks: { color: '#5a7a74', font: { family: 'JetBrains Mono', size: 10 }, callback: v => fmtH(v) }, grid: { color: '#1a2c29' }, beginAtZero: true }
+    }
+  };
+}
+
+// ── SETTINGS MODAL ──
+async function openSettings() {
+  document.getElementById('settings-modal').classList.add('open');
+  switchTab('tab-goals');
+  await loadGoalsIntoModal();
+  await loadProjectsIntoModal();
+}
+function closeSettings() {
+  document.getElementById('settings-modal').classList.remove('open');
+}
+
+function switchTab(id) {
+  activeTab = id;
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.modal-tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  document.querySelectorAll('.modal-tab').forEach((t, i) => {
+    if ((i === 0 && id === 'tab-goals') || (i === 1 && id === 'tab-projects')) t.classList.add('active');
+  });
+}
+
+async function loadGoalsIntoModal() {
+  const ml = monthLabel(selectedMonth);
+  document.getElementById('goals-month-name').textContent = ml;
+  const data = await fetch(`/api/goals?month=${selectedMonth}`).then(r => r.json());
+  document.getElementById('goal-daily').value   = data.daily_hours;
+  document.getElementById('goal-weekly').value  = data.weekly_hours;
+  document.getElementById('goal-monthly').value = data.monthly_hours;
+  const hasCustom = data.year_month === selectedMonth;
+  const badge = document.getElementById('goals-badge');
+  if (hasCustom) {
+    badge.className = 'goals-month-badge';
+    badge.textContent = `✏️ Metas personalizadas para ${ml}`;
+  } else {
+    badge.className = 'goals-month-badge goals-inherited';
+    badge.textContent = `📋 Usando metas padrão — salvar criará metas exclusivas para ${ml}`;
+  }
+}
+
+async function loadProjectsIntoModal() {
+  const container = document.getElementById('projects-checks');
+  container.innerHTML = '<div class="projects-loading">⏳ Carregando projetos...</div>';
+  try {
+    const data = await fetch('/api/projects').then(r => r.json());
+    const projects = data.projects;
+    allProjectNames = projects.map(p => p.name);
+    includedProjects = new Set(projects.filter(p => p.included).map(p => p.name));
+
+    if (!projects.length) {
+      container.innerHTML = '<div class="projects-loading">Nenhum projeto encontrado. Importe um CSV primeiro.</div>';
+      return;
+    }
+    container.innerHTML = projects.map(p => `
+      <label class="proj-check-item ${p.included ? 'checked' : ''}" id="pci-${CSS.escape(p.name)}">
+        <input type="checkbox" class="proj-checkbox" name="proj" value="${escHtml(p.name)}" ${p.included ? 'checked' : ''} onchange="toggleProjItem(this)">
+        <div class="proj-check-box">${p.included ? '✓' : ''}</div>
+        <span class="proj-check-name">${escHtml(p.name)}</span>
+      </label>
+    `).join('');
+  } catch(e) {
+    container.innerHTML = '<div class="projects-loading">Erro ao carregar projetos.</div>';
+  }
+}
+
+function toggleProjItem(input) {
+  const item = input.closest('.proj-check-item');
+  const box = item.querySelector('.proj-check-box');
+  if (input.checked) {
+    item.classList.add('checked');
+    box.textContent = '✓';
+    includedProjects.add(input.value);
+  } else {
+    item.classList.remove('checked');
+    box.textContent = '';
+    includedProjects.delete(input.value);
+  }
+}
+
+function escHtml(s) { return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+async function saveSettings() {
+  // Save goals for this month
+  await fetch(`/api/goals?month=${selectedMonth}`, {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      daily_hours:   parseFloat(document.getElementById('goal-daily').value),
+      weekly_hours:  parseFloat(document.getElementById('goal-weekly').value),
+      monthly_hours: parseFloat(document.getElementById('goal-monthly').value),
+    })
+  });
+
+  // Save project filters
+  const checked = [...document.querySelectorAll('#projects-checks input[name="proj"]')];
+  const included = checked.filter(c => c.checked).map(c => c.value);
+  await fetch('/api/filters', {
+    method: 'PUT',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ included, all_projects: allProjectNames })
+  });
+
+  closeSettings();
+  loadData();
+  showToast('Configurações salvas com sucesso!');
+}
+
+// ── IMPORT MODAL ──
+function openImport() {
+  document.getElementById('import-modal').classList.add('open');
+  document.getElementById('import-result').style.display = 'none';
+}
+function closeImport() {
+  document.getElementById('import-modal').classList.remove('open');
+  loadData();
+}
+
+const dz = document.getElementById('drop-zone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('drag-over'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('drag-over'));
+dz.addEventListener('drop', e => { e.preventDefault(); dz.classList.remove('drag-over'); if (e.dataTransfer.files[0]) uploadFile(e.dataTransfer.files[0]); });
+document.getElementById('file-input').addEventListener('change', e => { if (e.target.files[0]) uploadFile(e.target.files[0]); });
+
+async function uploadFile(file) {
+  if (!file.name.endsWith('.csv')) { showToast('Selecione um arquivo .csv', true); return; }
+  const resultEl = document.getElementById('import-result');
+  resultEl.style.display = 'block';
+  resultEl.textContent = '⏳ Importando...';
+  resultEl.style.color = 'var(--muted)';
+  const fd = new FormData();
+  fd.append('file', file);
+  try {
+    const data = await fetch('/api/import', { method:'POST', body:fd }).then(r => r.json());
+    resultEl.textContent = `✅ ${data.inserted} novos registros importados · ${data.skipped} ignorados (duplicados)`;
+    resultEl.style.color = 'var(--teal)';
+    showToast(`Importação concluída: +${data.inserted} registros`);
+  } catch(e) {
+    resultEl.textContent = '❌ Erro na importação.';
+    resultEl.style.color = 'var(--red)';
+  }
+}
+
+// Close on backdrop
+document.querySelectorAll('.modal-backdrop').forEach(b => b.addEventListener('click', e => { if (e.target === b) b.classList.remove('open'); }));
+
+// ── TOAST ──
+function showToast(msg, isErr = false) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.borderColor = isErr ? 'var(--red)' : 'var(--teal)';
+  t.style.color = isErr ? 'var(--red)' : 'var(--teal)';
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 3500);
+}
+
+init();
+</script>
+</body>
+</html>
