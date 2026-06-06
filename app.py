@@ -206,6 +206,7 @@ def get_goals():
 @app.route('/api/goals', methods=['PUT'])
 def update_goals():
     data = request.json
+    #TODO: validate input [required]
     month = request.args.get('month')
     conn = get_db()
     if month:
@@ -222,8 +223,11 @@ def update_goals():
         )
     conn.commit()
     conn.close()
-    return jsonify({'ok': True})
-
+    return jsonify({
+        'daily_hours': data['daily_hours'],
+        'weekly_hours': data['weekly_hours'],
+        'monthly_hours': data['monthly_hours']
+    }), 200
 
 # ── STATS ──
 @app.route('/api/stats', methods=['GET'])

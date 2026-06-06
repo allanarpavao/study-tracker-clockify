@@ -1,4 +1,3 @@
-import app as app_module
 import io
 
 def test_import_no_file_returns_error(client):
@@ -84,7 +83,7 @@ def test_import_ignores_rows_without_date(client, db):
     "Start Date,Project,Task,Description,Start Time,End Time,Duration (decimal)\n"
     "21/05/2026,Estudos,AWS Academy,Módulo 2,10:00:00,11:00:00,1.0\n"
     ",Leitura,Clean Code,Capítulo 1,09:04:22,09:59:43,0.92\n"
-    "22/05/2026,Voluntariado,RioEcoPets, Redes Sociais,10:00:00,11:00:00,1.0\n")
+    "22/05/2026,Voluntariado,RioEcoPets,Redes Sociais,10:00:00,11:00:00,1.0\n")
 
     csv_bytes = io.BytesIO(csv_content.encode("utf-8"))
 
