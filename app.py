@@ -124,6 +124,7 @@ def import_csv():
             if project:
                 new_projects.add(project)
             inserted += 1
+            #TODO: count exceptions and show the user
         except Exception:
             continue
 
